@@ -243,9 +243,9 @@ class Resolver:
         self.cache.write_atomic("art", url, "bin", r.content)
         return r.content
 
-    async def _build_sash(self, raw: bytes, details: dict, media_type: str, tmdb_id: str, imdb_id: str | None) -> tuple[bytes, str | None]:
+    async def _build_sash(self, raw: bytes, provider: str, details: dict, media_type: str, tmdb_id: str, imdb_id: str | None) -> tuple[bytes, str, str | None]:
         if not settings.enable_sashes:
-            return raw, None
+            return raw, provider, None
         assert self.client is not None
         async with self.image_sem:
             img = Image.open(io.BytesIO(raw)).convert("RGB")
@@ -326,12 +326,12 @@ class Resolver:
                     picked = p
                     break
         if not picked:
-            return raw, None
+            return raw, provider, None
         label, _stype = picked
         color, text = dominant_sash_color(img, settings.sash_dark_threshold, settings.sash_force_gray_on_dark)
         out = draw_status_sash(img, label, color, text, settings)
         buf = io.BytesIO(); out.save(buf, format="JPEG", quality=92, optimize=True)
-        return buf.getvalue(), label
+        return buf.getvalue(), provider, label
 
     async def select_art(self, kind: str, media_type: str, tmdb_id: str | None, imdb_id: str | None = None, tvdb_id: str | None = None, lang: str = "en", with_sash: bool = False):
         requested = kind + ":" + _media_kind(media_type) + ":" + str(tmdb_id or "") + ":" + str(imdb_id or "") + ":" + str(tvdb_id or "") + ":" + str(lang) + ":" + str(with_sash)
@@ -410,5 +410,5 @@ class Resolver:
                 self.cache.write_json("selection", sel_key, {"url": selected_url, "provider": provider})
 
         if kind == "poster" and with_sash:
-            return await self._build_sash(raw, details or {}, media_type, str(tmdb_id or ""), imdb_id)
+            return await self._build_sash(raw, provider or "unknown", details or {}, media_type, str(tmdb_id or ""), imdb_id)
         return raw, provider, None

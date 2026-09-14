@@ -33,3 +33,10 @@ def test_unencoded_artwork_spec_still_parses():
 
     plain = "tmdb:movie:1514026&imdb:tt37281055&tvdb:372657.jpg"
     assert parse_path(plain) == ("movie", "1514026", "tt37281055", "372657", "jpg")
+
+def test_build_sash_returns_three_values_consistently():
+    from app.resolver import Resolver
+    import inspect
+    src = inspect.getsource(Resolver._build_sash)
+    assert 'return raw, provider, None' in src
+    assert 'return buf.getvalue(), provider, label' in src
