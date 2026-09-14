@@ -26,7 +26,12 @@ def draw_status_sash(image: Image.Image, label: str, color: tuple[int,int,int], 
     bottom_inset = max(1, round(w * settings.sash_bottom_inset_ratio))
     bottom = h - bottom_inset
     y_line = bottom-line_h
-    d.rectangle((0, y_line, w, bottom), fill=(*color, 255))
+    # Paint the entire lower safe region through the bitmap edge. This prevents
+    # any source-poster pixels from peeking out below the sash when a client applies
+    # a crop/mask with slightly different edge rounding. The visible rail thickness
+    # is still controlled by sash_bottom_line_ratio; the extra bottom inset becomes
+    # color fill rather than exposed poster art.
+    d.rectangle((0, y_line, w, h), fill=(*color, 255))
     bbox = d.textbbox((0,0), label, font=font)
     tw = bbox[2]-bbox[0]
     th = bbox[3]-bbox[1]
@@ -41,7 +46,8 @@ def draw_status_sash(image: Image.Image, label: str, color: tuple[int,int,int], 
     d.rounded_rectangle((x0, y0, x1, bottom), radius=radius, fill=(*color,255))
     d.rectangle((x0, bottom-radius, x1, bottom), fill=(*color,255))
     tx = x0 + (tab_w-tw)//2 - bbox[0]
-    ty = y0 + max(1, (tab_h-th)//2) - bbox[1] - 1
+    # Lower the label slightly within the tab to match the reference rendering.
+    ty = y0 + max(1, (tab_h-th)//2) - bbox[1] + max(2, round(w * 0.008))
     # tiny shadow keeps white type crisp on highly saturated art
     d.text((tx+1,ty+1), label, font=font, fill=(0,0,0,75))
     d.text((tx,ty), label, font=font, fill=(*text_color,255))
