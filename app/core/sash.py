@@ -25,7 +25,9 @@ def draw_status_sash(image: Image.Image, label: str, color: tuple[int,int,int], 
     bbox = d.textbbox((0,0), label, font=font)
     tw = bbox[2]-bbox[0]
     th = bbox[3]-bbox[1]
-    tab_w = min(w-2*line_h, tw + 2*pad_x)
+    min_tab_w = max(2 * line_h, round(w * settings.sash_min_tab_width_ratio))
+    max_tab_w = min(w-2*line_h, round(w * settings.sash_max_tab_width_ratio))
+    tab_w = max(min_tab_w, min(max_tab_w, tw + 2*pad_x))
     x0 = (w-tab_w)//2
     x1 = x0+tab_w
     y0 = h-tab_h

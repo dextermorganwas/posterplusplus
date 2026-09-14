@@ -30,6 +30,9 @@ Blank optional placeholders are treated as missing values. A request can also be
 
 ## Artwork selection
 
+Artwork selection is deliberately deterministic. Within each provider/language bucket, the router takes the first artwork returned by the provider API; it does not rerank posters or logos by vote score, score, popularity, or its own quality heuristic. The selection cache uses `ART_SELECTION_ALGORITHM_VERSION` so changing this policy invalidates prior selections.
+
+
 Normal selection is:
 
 `TVDB density-qualified -> TMDB -> Metahub -> relaxed TVDB -> TMDB primary`

@@ -40,3 +40,10 @@ def test_build_sash_returns_three_values_consistently():
     src = inspect.getsource(Resolver._build_sash)
     assert 'return raw, provider, None' in src
     assert 'return buf.getvalue(), provider, label' in src
+
+
+def test_default_poster_size_and_sash_priority_match_request():
+    from app.config import settings
+    assert settings.tmdb_poster_size == "w500"
+    expected=["trending","wins","gg_wins","festival","pic_noms","metacritic","gg_noms","top_rated","premiere","new_release","just_added","new_season","season_finale","studio","director","cast","cult","true_story","short_film","mini_series","binge_ready","returning","airing","cancelled","ended","cinema"]
+    assert list(settings.sash_priority)==expected

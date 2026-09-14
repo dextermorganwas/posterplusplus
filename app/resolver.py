@@ -163,31 +163,28 @@ class Resolver:
         order = [_LANG_MAP.get(x, x) for x in _lang_order(requested, original)]
         def al(a: dict) -> str:
             return str(a.get("language") or a.get("languageCode") or "").lower()
-        def score(a: dict) -> tuple[float, float, float]:
-            try: s=float(a.get("score") or 0)
-            except (ValueError, TypeError): s=0.0
-            try: v=float(a.get("vote_average") or 0)
-            except (ValueError, TypeError): v=0.0
-            primary=1.0 if a.get("isPrimary") or a.get("is_primary") else 0.0
-            return (primary, s, v)
-
         if kind == "backdrop" and settings.textless_backdrops_only:
             cat = [a for a in cat if not al(a)]
 
         chosen = None
         for want in order:
-            xs = [a for a in cat if al(a) == want]
-            if xs:
-                chosen = max(xs, key=score)
+            # IMPORTANT: preserve TVDB's returned artwork order. Do not score or
+            # rerank by score/votes/primary flags for language-specific selection.
+            for item in cat:
+                if al(item) == want:
+                    chosen = item
+                    break
+            if chosen is not None:
                 break
         if chosen is None and kind == "backdrop" and settings.textless_backdrops_only:
-            # A language-neutral TVDB background is the textless candidate pool; do not
-            # fall through to language-bearing fanart, because the caller explicitly
-            # requested textless-only backdrops.
-            return None
+            # For textless TVDB backdrops the API's neutral-art list is already the
+            # candidate pool; take the first returned item, with no reranking.
+            chosen = cat[0] if cat else None
         if chosen is None and bypass_count and cat:
-            # Relaxed final fallback: exact language first above, then strongest primary art.
-            chosen = max(cat, key=score)
+            # Final relaxed TVDB fallback: honor an explicitly-primary artwork if
+            # the API marks one; otherwise use the first returned artwork.
+            primary = next((a for a in cat if a.get("isPrimary") or a.get("is_primary")), None)
+            chosen = primary or cat[0]
         if chosen is None:
             return None
         url = chosen.get("image") or chosen.get("image_url") or ""
@@ -357,7 +354,7 @@ class Resolver:
 
         # Selection cache stores only the resolved source URL/provider.  Sashes are
         # deliberately rendered after this layer because their facts are more volatile.
-        sel_key = f"{kind}:{_media_kind(media_type)}:{tmdb_id or ''}:{imdb_id or ''}:{tvdb_id or ''}:{lang}:{settings.textless_backdrops_only}:{settings.tvdb_min_artworks}:{settings.tvdb_min_logos}:{settings.tmdb_poster_size}:{settings.tmdb_backdrop_size}:{settings.tmdb_logo_size}"
+        sel_key = f"v{settings.art_selection_algorithm_version}:{kind}:{_media_kind(media_type)}:{tmdb_id or ''}:{imdb_id or ''}:{tvdb_id or ''}:{lang}:{settings.textless_backdrops_only}:{settings.tvdb_min_artworks}:{settings.tvdb_min_logos}:{settings.tmdb_poster_size}:{settings.tmdb_backdrop_size}:{settings.tmdb_logo_size}"
         cached_sel = self.cache.read_json("selection", sel_key, settings.selection_cache_ttl_seconds)
         selected_url = None
         provider = None

@@ -31,13 +31,21 @@ def lang_code(item):
     x=item.get("iso_639_1"); return None if x in (None,"") else x
 
 def pick(items,wanted,textless=False):
+    """Select strictly by API list order; never score/rerank artwork.
+
+    Language preference is applied in order. Within a matching language bucket,
+    the first artwork returned by TMDB wins. For textless backdrops, the first
+    language-neutral artwork wins. No vote_average/vote_count scoring is used.
+    """
     candidates=[x for x in items if (not textless or lang_code(x) is None)]
     for want in wanted:
-        xs=[x for x in candidates if lang_code(x)==want]
-        if xs: return max(xs,key=lambda x:(x.get("vote_average") or 0,x.get("vote_count") or 0))
-    if textless: return max(candidates,key=lambda x:(x.get("vote_average") or 0,x.get("vote_count") or 0)) if candidates else None
-    neutral=[x for x in candidates if lang_code(x) is None]
-    if neutral: return max(neutral,key=lambda x:(x.get("vote_average") or 0,x.get("vote_count") or 0))
+        for item in candidates:
+            if lang_code(item)==want:
+                return item
+    if textless:
+        return candidates[0] if candidates else None
+    # Artwork language fallback beyond the explicit requested/original languages
+    # is intentionally not used for normal poster/logo selection.
     return None
 
 def primary(details,kind):
