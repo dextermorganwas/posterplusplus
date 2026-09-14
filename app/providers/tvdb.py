@@ -32,21 +32,29 @@ class TVDBClient:
         root="series" if media_type in {"tv","series"} else "movies"; return await self.get(f"/{root}/{tvdb_id}/extended",short="false")
     async def artworks(self,media_type,tvdb_id): return (await self.extended(media_type,tvdb_id) or {}).get("artworks") or []
 
+    async def artwork_type_map(self):
+        rows = await self.get("/artwork/types")
+        out = {}
+        for row in rows or []:
+            text = f"{row.get('slug') or ''} {row.get('name') or ''}".lower()
+            cat = None
+            if "clearlogo" in text or text.strip().endswith("logo") or " logo" in text:
+                cat = "logos"
+            elif "background" in text or "fanart" in text:
+                cat = "backdrops"
+            elif "poster" in text:
+                cat = "posters"
+            if cat and row.get("id"):
+                out[int(row["id"])] = cat
+        return out
+
+
 def is_series_level_artwork(art: dict) -> bool:
     """Return True only for artwork attached directly to the series, not a season/episode."""
     if not isinstance(art, dict):
         return False
     return art.get("seasonId") in (None, 0, "", "0") and art.get("episodeId") in (None, 0, "", "0")
-    async def artwork_type_map(self):
-        rows=await self.get("/artwork/types"); out={}
-        for row in rows or []:
-            rec=str(row.get("recordType") or "").lower()
-            text=f"{row.get('slug') or ''} {row.get('name') or ''}".lower(); cat=None
-            if "clearlogo" in text or text.strip().endswith("logo") or " logo" in text: cat="logos"
-            elif "background" in text or "fanart" in text: cat="backdrops"
-            elif "poster" in text: cat="posters"
-            if cat and row.get("id"): out[int(row["id"])]=cat
-        return out
+
 
 def lang_norm(code):
     mp={"eng":"en","spa":"es","fra":"fr","deu":"de","ita":"it","por":"pt","jpn":"ja","kor":"ko","zho":"zh","rus":"ru","nld":"nl","pol":"pl","swe":"sv","dan":"da","nor":"no","fin":"fi","tur":"tr","ara":"ar","hin":"hi","ces":"cs","hun":"hu","ell":"el","heb":"he","tha":"th","ukr":"uk","ron":"ro"}
