@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio, logging, re
 from contextlib import asynccontextmanager
+from urllib.parse import unquote
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response, JSONResponse
 from .config import settings
@@ -19,7 +20,11 @@ def auth_ok(request: Request) -> bool:
     return request.headers.get("x-access-key")==settings.access_key or request.query_params.get("access_key")==settings.access_key
 
 def parse_path(spec: str):
-    m=PATH_RE.match(spec)
+    # AIOMetadata/stremio clients commonly percent-encode reserved URL characters
+    # inside the path parameter (e.g. : -> %3A, & -> %26). Decode exactly once
+    # before applying the artwork-spec grammar.
+    spec = unquote(spec)
+    m=PATH_RE.fullmatch(spec)
     if not m:return None
     return m.group("type"), m.group("tmdb") or None, m.group("imdb") or None, m.group("tvdb") or None, m.group("ext") or "jpg"
 
