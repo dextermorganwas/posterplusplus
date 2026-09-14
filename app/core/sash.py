@@ -35,6 +35,7 @@ def draw_status_sash(image: Image.Image, label: str, color: tuple[int,int,int], 
     bbox = d.textbbox((0,0), label, font=font)
     tw = bbox[2]-bbox[0]
     th = bbox[3]-bbox[1]
+    ascent, descent = font.getmetrics()
     min_tab_w = max(2 * line_h, round(w * settings.sash_min_tab_width_ratio))
     max_tab_w = min(w-2*line_h, round(w * settings.sash_max_tab_width_ratio))
     tab_w = max(min_tab_w, min(max_tab_w, tw + 2*pad_x))
@@ -46,9 +47,13 @@ def draw_status_sash(image: Image.Image, label: str, color: tuple[int,int,int], 
     d.rounded_rectangle((x0, y0, x1, bottom), radius=radius, fill=(*color,255))
     d.rectangle((x0, bottom-radius, x1, bottom), fill=(*color,255))
     tx = x0 + (tab_w-tw)//2 - bbox[0]
-    # Lower the label slightly within the tab to match the reference rendering.
-    ty = y0 + max(1, (tab_h-th)//2) - bbox[1] + max(2, round(w * 0.008))
+    # Use one fixed typographic baseline for every label instead of vertically
+    # centering each label's glyph bounding box. Glyphs with descenders (for
+    # example the "y" in "Today") otherwise produce a visibly different vertical
+    # position from labels without descenders (such as "New").
+    text_center_y = y0 + tab_h / 2
+    baseline_y = round(text_center_y + (ascent - descent) / 2 + w * settings.sash_text_vertical_offset_ratio)
     # tiny shadow keeps white type crisp on highly saturated art
-    d.text((tx+1,ty+1), label, font=font, fill=(0,0,0,75))
-    d.text((tx,ty), label, font=font, fill=(*text_color,255))
+    d.text((tx+1, baseline_y+1), label, font=font, fill=(0,0,0,75), anchor='ls')
+    d.text((tx, baseline_y), label, font=font, fill=(*text_color,255), anchor='ls')
     return Image.alpha_composite(img, layer).convert("RGB")

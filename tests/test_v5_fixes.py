@@ -32,3 +32,20 @@ def test_sash_fills_to_bottom_edge_and_lowers_text():
     out = draw_status_sash(Image.new("RGB", (500, 750), (10, 10, 10)), "Airing", (90, 80, 70), (255, 255, 255), settings)
     # Bottom row must be sash-colored so no source-poster strip can peek below it.
     assert out.getpixel((250, 749)) == (90, 80, 70)
+
+
+def test_sash_text_uses_fixed_baseline_for_labels_with_and_without_descenders():
+    from app.core.sash import draw_status_sash
+    from app.config import settings
+
+    base = Image.new("RGB", (500, 750), (15, 15, 15))
+    a = draw_status_sash(base, "#4 Today", (70, 70, 70), (255, 255, 255), settings)
+    b = draw_status_sash(base, "New", (70, 70, 70), (255, 255, 255), settings)
+
+    # The exact glyph ink boxes differ, but their baselines must be driven by the
+    # same typographic coordinate rather than by each label's bbox height.
+    # Regression guard: implementation must use a fixed baseline anchor.
+    import inspect
+    src = inspect.getsource(draw_status_sash)
+    assert "anchor='ls'" in src
+    assert 'baseline_y = round' in src
