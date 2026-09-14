@@ -4,8 +4,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY LICENSE ./LICENSE
-RUN useradd -r -u 10001 appuser && mkdir -p /app/cache && chown -R appuser:appuser /app
-USER appuser
+COPY entrypoint.sh ./entrypoint.sh
+RUN useradd -r -u 10001 appuser && mkdir -p /app/cache && chown -R appuser:appuser /app && chmod +x /app/entrypoint.sh
 EXPOSE 8000
 STOPSIGNAL SIGTERM
-CMD ["sh","-c","exec uvicorn app.main:app --host ${HOST:-0.0.0.0} --port ${PORT:-8000} --workers 1"]
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -10,7 +10,7 @@ The three extracted source modules that define the PostersPlus discovery vocabul
 - `app/core/awards.py`
 - `app/core/festivals.py`
 
-Run `python tools/verify_postersplus_parity.py` to verify the zero-diff parity check against the supplied PostersPlus-dev source path when both projects are available.
+Run `python tools/verify_postersplus_parity.py --postersplus /path/to/PostersPlus-dev` to verify the zero-diff parity check against the supplied PostersPlus-dev source checkout.
 
 The 30 configurable PostersPlus sash slots are all present: `wins`, `gg_wins`, `festival`, `pic_noms`, `gg_noms`, `studio`, `director`, `cast`, `trending`, `trending_broad`, `premiere`, `new_release`, `just_added`, `new_season`, `season_finale`, `cult`, `foreign`, `true_story`, `short_film`, `mini_series`, `binge_ready`, `returning`, `airing`, `cancelled`, `ended`, `physical`, `streaming`, `cinema`, `production`.
 
@@ -59,3 +59,29 @@ docker compose up -d
 ## Docker / GHCR
 
 The GitHub Actions workflow builds `linux/amd64` and `linux/arm64` images and publishes them to GHCR. See `SETUP_GITHUB_DESKTOP.md` for a beginner-friendly Windows GitHub Desktop -> GitHub -> GHCR -> Linux Docker Compose walkthrough.
+
+## Cache directory permissions
+
+The image starts as root only long enough to create/chown the bind-mounted cache directory, then drops to the unprivileged `appuser` (UID 10001). This avoids the common `sqlite3.OperationalError: unable to open database file` failure when Docker creates `./cache` as root on the host. `CACHE_HOST_PATH` may be changed in `.env` if you want the persistent cache elsewhere.
+
+If your Docker host uses a filesystem that prevents root from changing ownership (for example some root-squashed network mounts), create the directory yourself and grant UID 10001 access before starting:
+
+```bash
+mkdir -p ./cache
+sudo chown -R 10001:10001 ./cache
+```
+
+### Existing deployment showing `unable to open database file`
+
+That error means the SQLite file's parent directory is not writable by the container user. Pull the updated image (or rebuild the updated repository) after applying the new `entrypoint.sh`; it now fixes ownership automatically at startup. For an existing host cache, this one-time command is also safe and immediate:
+
+```bash
+cd /opt/mediaart-router
+mkdir -p ./cache
+sudo chown -R 10001:10001 ./cache
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+If you use another `CACHE_HOST_PATH`, substitute that directory. Do not delete the cache unless you specifically want to lose cached artwork/metadata and local IMDb data.
