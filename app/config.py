@@ -43,7 +43,7 @@ class Settings:
     sash_max_tab_width_ratio: float=env_float("SASH_MAX_TAB_WIDTH_RATIO",0.70)
     sash_dark_threshold: float=env_float("SASH_DARK_THRESHOLD",0.17)
     sash_force_gray_on_dark: bool=env_bool("SASH_FORCE_GRAY_ON_DARK",True)
-    sash_bottom_inset_ratio: float=env_float("SASH_BOTTOM_INSET_RATIO",0.006)
+    sash_bottom_inset_ratio: float=env_float("SASH_BOTTOM_INSET_RATIO",0.012)
     sash_priority: tuple[str,...]=tuple(x.strip() for x in os.getenv(
         "SASH_PRIORITY",
         "trending,wins,gg_wins,festival,pic_noms,metacritic,gg_noms,top_rated,premiere,new_release,just_added,new_season,season_finale,studio,director,cast,cult,true_story,short_film,mini_series,binge_ready,returning,airing,cancelled,ended,cinema"

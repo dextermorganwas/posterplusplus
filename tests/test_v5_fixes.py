@@ -23,4 +23,4 @@ def test_sash_output_has_fixed_postersplus_canvas():
 def test_algorithm_version_bumped():
     from app.config import settings
     assert settings.art_selection_algorithm_version >= 4
-    assert settings.sash_bottom_inset_ratio > 0
+    assert settings.sash_bottom_inset_ratio >= 0.012
