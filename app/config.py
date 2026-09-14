@@ -43,6 +43,7 @@ class Settings:
     sash_max_tab_width_ratio: float=env_float("SASH_MAX_TAB_WIDTH_RATIO",0.70)
     sash_dark_threshold: float=env_float("SASH_DARK_THRESHOLD",0.17)
     sash_force_gray_on_dark: bool=env_bool("SASH_FORCE_GRAY_ON_DARK",True)
+    sash_bottom_inset_ratio: float=env_float("SASH_BOTTOM_INSET_RATIO",0.006)
     sash_priority: tuple[str,...]=tuple(x.strip() for x in os.getenv(
         "SASH_PRIORITY",
         "trending,wins,gg_wins,festival,pic_noms,metacritic,gg_noms,top_rated,premiere,new_release,just_added,new_season,season_finale,studio,director,cast,cult,true_story,short_film,mini_series,binge_ready,returning,airing,cancelled,ended,cinema"
@@ -60,7 +61,7 @@ class Settings:
     digital_release_min_age_days: int=max(0,env_int("DIGITAL_RELEASE_MIN_AGE_DAYS",1))
     digital_release_max_age_days: int=max(1,env_int("DIGITAL_RELEASE_MAX_AGE_DAYS",30))
     cinema_max_age_years: int=max(0,env_int("CINEMA_MAX_AGE_YEARS",3))
-    art_selection_algorithm_version: int=max(1,env_int("ART_SELECTION_ALGORITHM_VERSION",3))
+    art_selection_algorithm_version: int=max(1,env_int("ART_SELECTION_ALGORITHM_VERSION",4))
 settings=Settings()
 # Keep compatibility for exact extracted modules that refer to module-level names.
 TRENDING_FETCH_COUNT=settings.trending_count

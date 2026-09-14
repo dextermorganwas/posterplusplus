@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 import httpx
-from PIL import Image
+from PIL import Image, ImageOps
 
 from .config import settings
 from .core.cache import FileCache
@@ -18,7 +18,7 @@ from .core.release_status import fetch_recent_movie_digital_release_date, fetch_
 from .core.state import is_digital_release
 from .providers import tmdb
 from .providers.metahub import fetch as metahub_fetch
-from .providers.tvdb import TVDBClient, lang_norm
+from .providers.tvdb import TVDBClient, lang_norm, is_series_level_artwork
 from .toprated import IMDbRatings
 from .trending import Trending
 
@@ -155,6 +155,11 @@ class Resolver:
         arts = await tv.artworks(media_type, tid)
         type_map = await tv.artwork_type_map()
         wanted = {"poster":"posters", "backdrop":"backdrops", "logo":"logos"}[kind]
+        # A TVDB series payload can expose season/episode artwork alongside
+        # series-level artwork. Exclude season/episode records before counting or
+        # selecting so the 10/3-artwork density gates apply only to the show itself.
+        if media_type in {"tv", "series"}:
+            arts = [a for a in arts if is_series_level_artwork(a)]
         cat = [a for a in arts if type_map.get(a.get("type")) == wanted]
         threshold = settings.tvdb_min_logos if kind == "logo" else settings.tvdb_min_artworks
         if not bypass_count and len(cat) < threshold:
@@ -407,5 +412,19 @@ class Resolver:
                 self.cache.write_json("selection", sel_key, {"url": selected_url, "provider": provider})
 
         if kind == "poster" and with_sash:
+            # Normalize every sashed poster to PostersPlus's 500x750 output canvas.
+            # This makes the bottom sash occupy the same geometry regardless of
+            # whether TMDB/TVDB returned 2:3, 680x1000, or another near-poster ratio.
+            async with self.image_sem:
+                image = Image.open(io.BytesIO(raw)).convert("RGB")
+                image = ImageOps.fit(
+                    image,
+                    (500, 750),
+                    method=Image.Resampling.LANCZOS,
+                    centering=(0.5, 0.5),
+                )
+                buf = io.BytesIO()
+                image.save(buf, format="JPEG", quality=92, optimize=True)
+                raw = buf.getvalue()
             return await self._build_sash(raw, provider or "unknown", details or {}, media_type, str(tmdb_id or ""), imdb_id)
         return raw, provider, None

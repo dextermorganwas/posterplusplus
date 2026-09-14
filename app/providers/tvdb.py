@@ -31,6 +31,12 @@ class TVDBClient:
     async def extended(self,media_type,tvdb_id):
         root="series" if media_type in {"tv","series"} else "movies"; return await self.get(f"/{root}/{tvdb_id}/extended",short="false")
     async def artworks(self,media_type,tvdb_id): return (await self.extended(media_type,tvdb_id) or {}).get("artworks") or []
+
+def is_series_level_artwork(art: dict) -> bool:
+    """Return True only for artwork attached directly to the series, not a season/episode."""
+    if not isinstance(art, dict):
+        return False
+    return art.get("seasonId") in (None, 0, "", "0") and art.get("episodeId") in (None, 0, "", "0")
     async def artwork_type_map(self):
         rows=await self.get("/artwork/types"); out={}
         for row in rows or []:

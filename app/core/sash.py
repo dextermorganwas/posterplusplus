@@ -20,8 +20,13 @@ def draw_status_sash(image: Image.Image, label: str, color: tuple[int,int,int], 
 
     layer = Image.new("RGBA", (w, h), (0,0,0,0))
     d = ImageDraw.Draw(layer)
-    y_line = h-line_h
-    d.rectangle((0, y_line, w, h), fill=(*color, 255))
+    # Keep the entire sash inside a consistent bottom-safe region. Stremio commonly
+    # applies a rounded mask to poster cards, so drawing flush to the bitmap edge
+    # can clip the rail differently depending on the source poster's dimensions.
+    bottom_inset = max(1, round(w * settings.sash_bottom_inset_ratio))
+    bottom = h - bottom_inset
+    y_line = bottom-line_h
+    d.rectangle((0, y_line, w, bottom), fill=(*color, 255))
     bbox = d.textbbox((0,0), label, font=font)
     tw = bbox[2]-bbox[0]
     th = bbox[3]-bbox[1]
@@ -30,11 +35,11 @@ def draw_status_sash(image: Image.Image, label: str, color: tuple[int,int,int], 
     tab_w = max(min_tab_w, min(max_tab_w, tw + 2*pad_x))
     x0 = (w-tab_w)//2
     x1 = x0+tab_w
-    y0 = h-tab_h
+    y0 = bottom-tab_h
     # The shape is the core inspiration from the attached examples: a thin full
     # width rail with a centered upward tab and smoothly rounded top shoulders.
-    d.rounded_rectangle((x0, y0, x1, h), radius=radius, fill=(*color,255))
-    d.rectangle((x0, h-radius, x1, h), fill=(*color,255))
+    d.rounded_rectangle((x0, y0, x1, bottom), radius=radius, fill=(*color,255))
+    d.rectangle((x0, bottom-radius, x1, bottom), fill=(*color,255))
     tx = x0 + (tab_w-tw)//2 - bbox[0]
     ty = y0 + max(1, (tab_h-th)//2) - bbox[1] - 1
     # tiny shadow keeps white type crisp on highly saturated art
