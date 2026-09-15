@@ -35,5 +35,5 @@ def test_tvdb_selection_does_not_score_artwork():
 def test_sash_defaults_are_larger_than_previous_version():
     from app.config import settings
     assert settings.sash_tab_height_ratio >= 0.085
-    assert settings.sash_font_ratio == 0.048
+    assert settings.sash_font_ratio == 0.060
     assert settings.sash_min_tab_width_ratio >= 0.32

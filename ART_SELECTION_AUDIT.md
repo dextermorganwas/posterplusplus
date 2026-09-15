@@ -17,7 +17,7 @@ For backdrops, `TEXTLESS_BACKDROPS_ONLY=true` restricts TMDB to language-neutral
 
 ## Cache invalidation
 
-`ART_SELECTION_ALGORITHM_VERSION=3` is included in the selection-cache key. Changing the artwork selection algorithm therefore bypasses selections made by earlier versions.
+`ART_SELECTION_ALGORITHM_VERSION=5` is included in the selection-cache key. Changing the artwork selection algorithm therefore bypasses selections made by earlier versions.
 
 ## PostersPlus sash parity
 

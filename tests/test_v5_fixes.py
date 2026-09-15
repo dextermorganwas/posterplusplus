@@ -22,9 +22,9 @@ def test_sash_output_has_fixed_postersplus_canvas():
 
 def test_algorithm_version_bumped():
     from app.config import settings
-    assert settings.art_selection_algorithm_version >= 4
+    assert settings.art_selection_algorithm_version >= 5
     assert settings.sash_bottom_inset_ratio >= 0.012
-    assert settings.sash_font_ratio == 0.048
+    assert settings.sash_font_ratio == 0.060
     assert settings.sash_tab_width_ratio == 0.42
 
 
@@ -59,7 +59,7 @@ def test_sash_uses_one_font_size_for_all_labels():
     from pathlib import Path
     from app.config import settings
     from app.core import sash
-    assert settings.sash_font_ratio == 0.048
+    assert settings.sash_font_ratio == 0.060
     assert settings.sash_min_font_ratio == 0.048
     assert "_font_that_fits" not in Path(sash.__file__).read_text()
     assert "_font_fixed" in Path(sash.__file__).read_text()

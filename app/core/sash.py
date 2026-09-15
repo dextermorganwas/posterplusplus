@@ -4,15 +4,15 @@ import os
 
 
 def _font_path() -> str:
-    return "/usr/share/fonts/truetype/noto/NotoSansDisplay-SemiCondensedBold.ttf"
+    return "/usr/share/fonts/opentype/urw-base35/NimbusSansNarrow-Bold.otf"
 
 
 def _font_fixed(text: str, size: int):
     """Return one fixed-size font for every sash label.
 
-    The font is Noto Sans Display SemiCondensed Bold: a moderate, clean
-    condensation chosen to keep long labels readable inside the same fixed tab
-    without horizontally scaling individual glyphs.
+    The font is Nimbus Sans Narrow Bold: a clean, tall narrow sans-serif chosen
+    to approximate the compact uppercase typography of the reference sash while
+    keeping glyph proportions natural (no horizontal scaling).
 
     Sash labels intentionally share one typographic scale. We do not shrink
     individual labels just because they are longer; that makes labels such as
