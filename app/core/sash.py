@@ -4,7 +4,7 @@ import os
 
 
 def _font_path() -> str:
-    return os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "RobotoCondensed-Bold.ttf")
+    return os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "Inter-Bold.ttf")
 
 
 def _font_that_fits(text: str, start_size: int, min_size: int, max_width: int):
