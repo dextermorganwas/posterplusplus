@@ -25,7 +25,7 @@ def test_algorithm_version_bumped():
     assert settings.art_selection_algorithm_version >= 5
     assert settings.sash_bottom_inset_ratio >= 0.012
     assert settings.sash_font_ratio == 0.054
-    assert settings.sash_tab_width_ratio == 0.46
+    assert settings.sash_tab_width_ratio == 0.50
 
 
 def test_sash_fills_to_bottom_edge_and_lowers_text():

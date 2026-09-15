@@ -1029,18 +1029,27 @@ EMMY_LIMITED_NOM_TMDB_IDS: set[int] = {
 # Combined lookup sets — used in parse_mdblist_awards for O(1) checks
 # ---------------------------------------------------------------------------
 
-_GG_ALL_WINNERS: set[int] = (
+# TMDB movie and TV ids are separate namespaces — movie/105 is Back to the
+# Future, tv/105 is Sex and the City — so the film and series sets must never
+# be searched together.  They are kept apart here and picked by media type.
+_GG_FILM_WINNERS: set[int] = (
     GOLDEN_GLOBE_DRAMA_WINNER_TMDB_IDS
     | GOLDEN_GLOBE_COMEDY_WINNER_TMDB_IDS
-    | GOLDEN_GLOBE_TV_DRAMA_WINNER_TMDB_IDS
+)
+
+_GG_FILM_NOMS: set[int] = (
+    GOLDEN_GLOBE_DRAMA_NOM_TMDB_IDS
+    | GOLDEN_GLOBE_COMEDY_NOM_TMDB_IDS
+)
+
+_GG_TV_WINNERS: set[int] = (
+    GOLDEN_GLOBE_TV_DRAMA_WINNER_TMDB_IDS
     | GOLDEN_GLOBE_TV_COMEDY_WINNER_TMDB_IDS
     | GOLDEN_GLOBE_TV_LIMITED_WINNER_TMDB_IDS
 )
 
-_GG_ALL_NOMS: set[int] = (
-    GOLDEN_GLOBE_DRAMA_NOM_TMDB_IDS
-    | GOLDEN_GLOBE_COMEDY_NOM_TMDB_IDS
-    | GOLDEN_GLOBE_TV_DRAMA_NOM_TMDB_IDS
+_GG_TV_NOMS: set[int] = (
+    GOLDEN_GLOBE_TV_DRAMA_NOM_TMDB_IDS
     | GOLDEN_GLOBE_TV_COMEDY_NOM_TMDB_IDS
     | GOLDEN_GLOBE_TV_LIMITED_NOM_TMDB_IDS
 )
@@ -1153,9 +1162,75 @@ EMMY_WINNER_TMDB_IDS: set[int] = {
 # Award parsing from MDblist keywords
 # ---------------------------------------------------------------------------
 
+# Labels derived purely from the TMDB id (see tmdb_id_awards).  They are
+# re-derived on every cache read, so the stored copies are never trusted.
+_ID_DERIVED_LABELS = frozenset({
+    "Globe Winner", "Globe Nominee", "Emmy Winner", "Emmy Nominee",
+})
+
+
+def tmdb_id_awards(
+    tmdb_id: int | str | None,
+    media_type: str | None,
+) -> tuple[list[str], list[str]]:
+    """Golden Globe and Emmy wins / noms for a TMDB id, in its own namespace.
+
+    Movies are checked against the film Globe categories only; series against
+    the TV Globe categories and the Emmys.  An unknown media type is treated as
+    a movie, the /poster default.
+    """
+    try:
+        numeric = int(tmdb_id) if tmdb_id is not None else None
+    except (ValueError, TypeError):
+        numeric = None
+    if numeric is None:
+        return [], []
+
+    wins: list[str] = []
+    noms: list[str] = []
+    is_tv = media_type in ("tv", "series")
+
+    # --- Golden Globe ---
+    gg_winners, gg_noms = (_GG_TV_WINNERS, _GG_TV_NOMS) if is_tv else (_GG_FILM_WINNERS, _GG_FILM_NOMS)
+    if numeric in gg_winners:
+        wins.append("Globe Winner")
+    elif numeric in gg_noms:
+        noms.append("Globe Nominee")
+
+    # --- Emmy (television only) ---
+    if is_tv:
+        if numeric in EMMY_WINNER_TMDB_IDS:
+            wins.append("Emmy Winner")
+        elif numeric in _EMMY_ALL_NOMS:
+            noms.append("Emmy Nominee")
+
+    return wins, noms
+
+
+def reconcile_cached_awards(
+    wins: list[str],
+    noms: list[str],
+    tmdb_id: int | str | None,
+    media_type: str | None,
+) -> tuple[list[str], list[str]]:
+    """Rebuild the id-derived labels in a cached award pair.
+
+    Keyword-derived labels (the Oscars) are kept as stored — the keywords are
+    not cached, so they cannot be re-checked.  Globe and Emmy labels are thrown
+    away and re-derived from the id, so a row written before the namespaces
+    were separated (or before a list was corrected) stops carrying the error.
+    """
+    id_wins, id_noms = tmdb_id_awards(tmdb_id, media_type)
+    return (
+        [w for w in wins if w not in _ID_DERIVED_LABELS] + id_wins,
+        [n for n in noms if n not in _ID_DERIVED_LABELS] + id_noms,
+    )
+
+
 def parse_mdblist_awards(
     keywords: list[dict],
     tmdb_id: int | str | None = None,
+    media_type: str | None = None,
 ) -> tuple[list[str], list[str]]:
     """
     Derive award wins and nominations from MDblist keyword objects.
@@ -1169,8 +1244,9 @@ def parse_mdblist_awards(
     Series categories only, replacing the broad emmy-award-nominated keyword
     which fired on acting/directing/writing nominations too.
 
-    Golden Globe wins/noms cover all top film and TV categories via the
-    combined _GG_ALL_WINNERS / _GG_ALL_NOMS sets.
+    Golden Globe wins/noms cover the top film categories for movies and the
+    top TV categories for series — *media_type* picks the namespace, since
+    TMDB movie and TV ids overlap (see tmdb_id_awards).
 
     Returns (wins, noms) where each is a list of human-readable strings.
     """
@@ -1182,31 +1258,16 @@ def parse_mdblist_awards(
     wins: list[str] = []
     noms: list[str] = []
 
-    numeric_tmdb_id: int | None = None
-    if tmdb_id is not None:
-        try:
-            numeric_tmdb_id = int(tmdb_id)
-        except (ValueError, TypeError):
-            pass
-
     # --- Best Picture (Oscar) ---
     if "best-picture-winner" in keyword_names:
         wins.append("Oscar Winner")
     elif "best-picture-nominated" in keyword_names:
         noms.append("Oscar Nominee")
 
-    # --- Golden Globe (all top film + TV categories) ---
-    if numeric_tmdb_id is not None:
-        if numeric_tmdb_id in _GG_ALL_WINNERS:
-            wins.append("Globe Winner")
-        elif numeric_tmdb_id in _GG_ALL_NOMS:
-            noms.append("Globe Nominee")
-
-    # --- Emmy ---
-    if numeric_tmdb_id is not None and numeric_tmdb_id in EMMY_WINNER_TMDB_IDS:
-        wins.append("Emmy Winner")
-    elif numeric_tmdb_id is not None and numeric_tmdb_id in _EMMY_ALL_NOMS:
-        noms.append("Emmy Nominee")
+    # --- Golden Globe / Emmy — from the id, in its own namespace ---
+    id_wins, id_noms = tmdb_id_awards(tmdb_id, media_type)
+    wins.extend(id_wins)
+    noms.extend(id_noms)
 
     return wins, noms
 

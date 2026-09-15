@@ -14,7 +14,7 @@ def build_discovery(
     top_rated: bool,
     settings,
 ) -> DiscoveryMeta:
-    wins, noms = parse_mdblist_awards(keywords or [], tmdb_id=tmdb_id)
+    wins, noms = parse_mdblist_awards(keywords or [], tmdb_id=tmdb_id, media_type=media_type)
     meta = extract_discovery_meta(
         tmdb_data,
         media_type,

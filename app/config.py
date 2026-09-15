@@ -39,10 +39,10 @@ class Settings:
     sash_tab_radius_ratio: float=env_float("SASH_TAB_RADIUS_RATIO",0.018)
     sash_font_ratio: float=env_float("SASH_FONT_RATIO",0.054)
     sash_min_font_ratio: float=env_float("SASH_MIN_FONT_RATIO",0.054)
-    sash_side_pad_ratio: float=env_float("SASH_SIDE_PAD_RATIO",0.006)
+    sash_side_pad_ratio: float=env_float("SASH_SIDE_PAD_RATIO",0.014)
     sash_min_tab_width_ratio: float=env_float("SASH_MIN_TAB_WIDTH_RATIO",0.32)
     sash_max_tab_width_ratio: float=env_float("SASH_MAX_TAB_WIDTH_RATIO",0.70)
-    sash_tab_width_ratio: float=env_float("SASH_TAB_WIDTH_RATIO",0.46)
+    sash_tab_width_ratio: float=env_float("SASH_TAB_WIDTH_RATIO",0.50)
     sash_dark_threshold: float=env_float("SASH_DARK_THRESHOLD",0.17)
     sash_force_gray_on_dark: bool=env_bool("SASH_FORCE_GRAY_ON_DARK",True)
     sash_bottom_inset_ratio: float=env_float("SASH_BOTTOM_INSET_RATIO",0.012)
@@ -64,7 +64,7 @@ class Settings:
     digital_release_min_age_days: int=max(0,env_int("DIGITAL_RELEASE_MIN_AGE_DAYS",1))
     digital_release_max_age_days: int=max(1,env_int("DIGITAL_RELEASE_MAX_AGE_DAYS",30))
     cinema_max_age_years: int=max(0,env_int("CINEMA_MAX_AGE_YEARS",3))
-    art_selection_algorithm_version: int=max(1,env_int("ART_SELECTION_ALGORITHM_VERSION",5))
+    art_selection_algorithm_version: int=max(1,env_int("ART_SELECTION_ALGORITHM_VERSION",6))
 settings=Settings()
 # Keep compatibility for exact extracted modules that refer to module-level names.
 TRENDING_FETCH_COUNT=settings.trending_count

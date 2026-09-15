@@ -43,7 +43,7 @@ TVDB normally requires 10+ matching artworks for posters/backdrops and 3+ for lo
 
 Award/festival matching follows the supplied PostersPlus implementation. Keyword-backed signals use MDBList when `MDBLIST_API_KEY` is set. Custom trending sources accept normal MDBList list-page URLs without an MDBList API key; they are normalized to their `/json` representation and ranked like the PostersPlus implementation. When no custom source is configured, the router uses the TMDB trending endpoint.
 
-The PostersPlus newly-streaming signal is restored through its `r/movieleaks`/Arctic Shift polling model. TMDB release-date logic is also restored for `Just Added`, `Cinema`, `Streaming`, `Physical`, and movie production status, while TV lifecycle status is mapped from the TMDB status/episode metadata exactly through the extracted discovery rules.
+The PostersPlus newly-streaming signal is restored through its `r/movieleaks`/Arctic Shift polling model. TMDB release-date logic is also restored for `Just Added`, `Cinema`, `Streaming`, `Physical`, and movie production status, while TV lifecycle status is mapped from the TMDB status/episode metadata exactly through the extracted discovery rules. Recent PostersPlus fixes are also carried over: movie/TV award ids are kept in separate namespaces so movies cannot inherit Emmy/TV Golden Globe sashes, and unreleased movies with TMDB's early `Released` flag remain `Production` when a future theatrical, digital, physical, or premiere date proves they are not out yet. The newer PostersPlus release-date text option is intentionally not included.
 
 ## Changing the port
 

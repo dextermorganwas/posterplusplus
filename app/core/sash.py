@@ -52,6 +52,11 @@ def draw_status_sash(image: Image.Image, label: str, color: tuple[int, int, int]
         tab_w = min(tab_w, w - 2 * line_h)
         font = _font_fixed(text, font_size)
         text_w = _text_width(font, text)
+        # Keep a real horizontal safety margin inside the fixed-width tab.
+        # The font size stays fixed across labels; the tab is intentionally
+        # wide enough that long labels do not touch its rounded edges.
+        if text_w > tab_w - (2 * pad_x):
+            raise ValueError("sash label does not fit fixed tab with configured padding")
     except Exception:
         font = ImageFont.load_default()
         text_w = max(1, int(font.getlength(text))) if hasattr(font, 'getlength') else 1

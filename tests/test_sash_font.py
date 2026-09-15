@@ -12,4 +12,4 @@ def test_sash_font_scale_is_fixed_by_config():
     text = Path(".env.example").read_text()
     assert "SASH_FONT_RATIO=0.054" in text
     assert "SASH_MIN_FONT_RATIO=0.054" in text
-    assert "SASH_TAB_WIDTH_RATIO=0.46" in text
+    assert "SASH_TAB_WIDTH_RATIO=0.50" in text

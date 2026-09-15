@@ -257,7 +257,7 @@ class Resolver:
         is_top_rated = self.toprated.is_top(imdb_id)
 
         keywords = await self._load_keywords(media_type, tmdb_id, imdb_id)
-        wins, noms = parse_mdblist_awards(keywords, tmdb_id=tmdb_id)
+        wins, noms = parse_mdblist_awards(keywords, tmdb_id=tmdb_id, media_type=media_type)
 
         try:
             ranks = await self.trending.ranks(self.client, media_type, settings.tmdb_api_key)
