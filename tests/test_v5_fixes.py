@@ -24,6 +24,8 @@ def test_algorithm_version_bumped():
     from app.config import settings
     assert settings.art_selection_algorithm_version >= 4
     assert settings.sash_bottom_inset_ratio >= 0.012
+    assert settings.sash_font_ratio == 0.048
+    assert settings.sash_tab_width_ratio == 0.40
 
 
 def test_sash_fills_to_bottom_edge_and_lowers_text():
@@ -49,3 +51,15 @@ def test_sash_text_uses_fixed_baseline_for_labels_with_and_without_descenders():
     src = inspect.getsource(draw_status_sash)
     assert "anchor=\"ls\"" in src
     assert 'baseline_local = round' in src
+    assert "_font_that_fits" not in src
+    assert "_font_fixed" in src
+
+
+def test_sash_uses_one_font_size_for_all_labels():
+    from pathlib import Path
+    from app.config import settings
+    from app.core import sash
+    assert settings.sash_font_ratio == 0.048
+    assert settings.sash_min_font_ratio == 0.048
+    assert "_font_that_fits" not in Path(sash.__file__).read_text()
+    assert "_font_fixed" in Path(sash.__file__).read_text()
