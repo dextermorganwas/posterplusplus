@@ -34,7 +34,13 @@ _LANG_MAP = {
 
 
 def _media_kind(media_type: str) -> str:
+    """TMDB media kind used by title endpoints."""
     return "tv" if media_type in {"tv", "series"} else "movie"
+
+
+def _mdblist_media_kind(media_type: str) -> str:
+    """MDBList media segment. MDBList uses `show`, not `tv`, for series."""
+    return "show" if media_type in {"tv", "series"} else "movie"
 
 
 def _lang_order(requested: str | None, original: str | None) -> list[str]:
@@ -217,17 +223,31 @@ class Resolver:
             return []
         provider = "imdb" if imdb_id else "tmdb"
         mid = imdb_id or tmdb_id
-        cache_key = f"{provider}:{_media_kind(media_type)}:{mid}"
+        mdb_kind = _mdblist_media_kind(media_type)
+        cache_key = f"{provider}:{mdb_kind}:{mid}"
         cached = self.cache.read_json("discovery", cache_key, settings.discovery_cache_ttl_seconds)
         if isinstance(cached, dict) and isinstance(cached.get("keywords"), list):
             return cached["keywords"]
         assert self.client is not None
         try:
-            r = await self._get(f"https://api.mdblist.com/{provider}/{_media_kind(media_type)}/{mid}", params={"apikey": settings.mdblist_api_key, "append_to_response": "keyword"}, timeout=10.0)
+            r = await self._get(f"https://api.mdblist.com/{provider}/{mdb_kind}/{mid}", params={"apikey": settings.mdblist_api_key, "append_to_response": "keyword"}, timeout=10.0)
             if r.status_code == 429:
                 log.warning("MDBList rate limited for %s", mid)
                 return []
+            if r.status_code == 404:
+                # A title not present in MDBList is a normal miss. Cache the
+                # empty result so every poster request does not repeat the call.
+                self.cache.write_json("discovery", cache_key, {"keywords": [], "missing": True})
+                return []
+            if r.status_code == 400:
+                # MDBList uses `movie` / `show` in this endpoint. A 400 here is
+                # normally a bad media-type request or an otherwise unusable
+                # title lookup; treat it as an empty discovery result and cache
+                # it instead of spamming warnings for every poster request.
+                self.cache.write_json("discovery", cache_key, {"keywords": [], "invalid": True})
+                return []
             if r.status_code != 200:
+                self.cache.write_json("discovery", cache_key, {"keywords": [], "status": r.status_code})
                 return []
             keywords = r.json().get("keywords") or []
             self.cache.write_json("discovery", cache_key, {"keywords": keywords})

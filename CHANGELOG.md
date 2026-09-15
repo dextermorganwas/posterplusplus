@@ -1,3 +1,11 @@
+## 2026-09-15
+
+### MDBList show-route fix
+
+- Fixed series/TV keyword lookups to use MDBList's `/show/` route rather than the invalid `/tv/` route.
+- Cache normal 400/404 title misses as empty discovery results to avoid repeated noisy warnings and unnecessary upstream calls.
+- Bumped the artwork/discovery algorithm version so stale discovery/selection cache entries are not reused.
+
 # Changelog
 
 ## 2026-09-15

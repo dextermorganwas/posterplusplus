@@ -64,7 +64,7 @@ class Settings:
     digital_release_min_age_days: int=max(0,env_int("DIGITAL_RELEASE_MIN_AGE_DAYS",1))
     digital_release_max_age_days: int=max(1,env_int("DIGITAL_RELEASE_MAX_AGE_DAYS",30))
     cinema_max_age_years: int=max(0,env_int("CINEMA_MAX_AGE_YEARS",3))
-    art_selection_algorithm_version: int=max(1,env_int("ART_SELECTION_ALGORITHM_VERSION",6))
+    art_selection_algorithm_version: int=max(1,env_int("ART_SELECTION_ALGORITHM_VERSION",7))
 settings=Settings()
 # Keep compatibility for exact extracted modules that refer to module-level names.
 TRENDING_FETCH_COUNT=settings.trending_count

@@ -86,3 +86,39 @@ def test_release_dates_treat_limited_theatrical_and_premiere_as_evidence():
 def test_algorithm_version_bumped_for_latest_postersplus_fixes():
     from app.config import settings
     assert settings.art_selection_algorithm_version >= 6
+
+
+def test_mdblist_uses_show_not_tv_for_series():
+    from app.resolver import _mdblist_media_kind
+    assert _mdblist_media_kind("series") == "show"
+    assert _mdblist_media_kind("tv") == "show"
+    assert _mdblist_media_kind("movie") == "movie"
+
+
+def test_mdblist_400_is_cached_as_empty_and_not_logged_as_keyword_failure(monkeypatch, tmp_path):
+    import asyncio
+    from types import SimpleNamespace
+    import app.resolver as resolver_module
+
+    class Resp:
+        status_code = 400
+        def json(self):
+            return {"error": "Invalid media_type. Must be 'movie' or 'show'."}
+
+    r = resolver_module.Resolver()
+    r.cache = r.cache.__class__(str(tmp_path))
+    monkeypatch.setattr(
+        resolver_module,
+        "settings",
+        SimpleNamespace(mdblist_api_key="test-key", discovery_cache_ttl_seconds=3600),
+    )
+
+    async def fake_get(*args, **kwargs):
+        return Resp()
+
+    monkeypatch.setattr(r, "_get", fake_get)
+    monkeypatch.setattr(r, "client", object())
+    result = asyncio.run(r._load_keywords("series", "123", "tt1234567"))
+    assert result == []
+    cached = r.cache.read_json("discovery", "imdb:show:tt1234567", 999999)
+    assert cached == {"keywords": [], "invalid": True}
