@@ -30,9 +30,14 @@ def parse_path(spec: str):
 
 async def _background_maintenance(stop_event: asyncio.Event):
     try:
-        # Keep the IMDb local dataset current even before the first poster request.
+        # Never block API startup on the large IMDb ratings download. Refresh in
+        # the background and let poster requests use the last local dataset.
         if resolver.client:
-            await resolver.toprated.refresh_if_needed(resolver.client)
+            asyncio.create_task(resolver.toprated.refresh_if_needed(resolver.client))
+            # Warm the shared daily trending snapshots so the first poster does
+            # not have to fetch five TMDB pages itself.
+            asyncio.create_task(resolver.trending.ranks(resolver.client, "movie", settings.tmdb_api_key))
+            asyncio.create_task(resolver.trending.ranks(resolver.client, "series", settings.tmdb_api_key))
         last_prune=0.0
         while not stop_event.is_set():
             now=asyncio.get_running_loop().time()

@@ -32,5 +32,14 @@ class FileCache:
     def read_json(self,namespace,key,ttl):
         raw=self.read(namespace,key,'json',ttl)
         return json.loads(raw) if raw else None
+
+    def read_json_stale(self,namespace,key):
+        p=self.path(namespace,key,'json')
+        if not p.exists():
+            return None
+        try:
+            return json.loads(p.read_bytes())
+        except (OSError, ValueError, TypeError):
+            return None
     def write_json(self,namespace,key,obj):
         self.write_atomic(namespace,key,'json',json.dumps(obj,ensure_ascii=False).encode())

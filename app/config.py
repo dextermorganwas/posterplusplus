@@ -25,6 +25,7 @@ class Settings:
     tmdb_logo_size: str=os.getenv("TMDB_LOGO_SIZE","w500").strip()
     art_cache_ttl_seconds: int=env_int("ART_CACHE_TTL_SECONDS",2592000)
     selection_cache_ttl_seconds: int=env_int("SELECTION_CACHE_TTL_SECONDS",86400)
+    sash_cache_ttl_seconds: int=env_int("SASH_CACHE_TTL_SECONDS",21600)
     metadata_cache_ttl_seconds: int=env_int("METADATA_CACHE_TTL_SECONDS",604800)
     discovery_cache_ttl_seconds: int=env_int("DISCOVERY_CACHE_TTL_SECONDS",21600)
     top_rated_refresh_hours: int=env_int("TOP_RATED_REFRESH_HOURS",24)

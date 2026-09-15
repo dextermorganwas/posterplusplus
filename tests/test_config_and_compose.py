@@ -39,7 +39,7 @@ def test_build_sash_returns_three_values_consistently():
     import inspect
     src = inspect.getsource(Resolver._build_sash)
     assert 'return raw, provider, None' in src
-    assert 'return buf.getvalue(), provider, label' in src
+    assert 'return body, provider, label' in src
 
 
 def test_default_poster_size_and_sash_priority_match_request():

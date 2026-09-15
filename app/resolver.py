@@ -14,7 +14,7 @@ from .core.color import dominant_sash_color
 from .core.discovery import extract_discovery_meta, pick_sash
 from .core.sash import draw_status_sash
 from .core.awards import parse_mdblist_awards
-from .core.release_status import fetch_recent_movie_digital_release_date, fetch_release_status
+from .core.release_status import fetch_movie_release_info, fetch_recent_movie_digital_release_date, fetch_release_status
 from .core.state import is_digital_release
 from .providers import tmdb
 from .providers.metahub import fetch as metahub_fetch
@@ -228,33 +228,63 @@ class Resolver:
         cached = self.cache.read_json("discovery", cache_key, settings.discovery_cache_ttl_seconds)
         if isinstance(cached, dict) and isinstance(cached.get("keywords"), list):
             return cached["keywords"]
+        stale = self.cache.read_json_stale("discovery", cache_key)
         assert self.client is not None
         try:
-            r = await self._get(f"https://api.mdblist.com/{provider}/{mdb_kind}/{mid}", params={"apikey": settings.mdblist_api_key, "append_to_response": "keyword"}, timeout=10.0)
-            if r.status_code == 429:
-                log.warning("MDBList rate limited for %s", mid)
-                return []
-            if r.status_code == 404:
-                # A title not present in MDBList is a normal miss. Cache the
-                # empty result so every poster request does not repeat the call.
-                self.cache.write_json("discovery", cache_key, {"keywords": [], "missing": True})
-                return []
-            if r.status_code == 400:
-                # MDBList uses `movie` / `show` in this endpoint. A 400 here is
-                # normally a bad media-type request or an otherwise unusable
-                # title lookup; treat it as an empty discovery result and cache
-                # it instead of spamming warnings for every poster request.
-                self.cache.write_json("discovery", cache_key, {"keywords": [], "invalid": True})
-                return []
-            if r.status_code != 200:
-                self.cache.write_json("discovery", cache_key, {"keywords": [], "status": r.status_code})
-                return []
-            keywords = r.json().get("keywords") or []
-            self.cache.write_json("discovery", cache_key, {"keywords": keywords})
-            return keywords
+            r = await self._get(
+                f"https://api.mdblist.com/{provider}/{mdb_kind}/{mid}",
+                params={"apikey": settings.mdblist_api_key, "append_to_response": "keyword"},
+                timeout=10.0,
+            )
         except Exception as exc:
-            log.warning("MDBList keyword lookup failed for %s: %s", mid, exc)
+            # A transient upstream failure must not erase a previously-known
+            # keyword set. Keep stale discovery facts and make the next request
+            # eligible for a retry after the normal cache window.
+            if isinstance(stale, dict) and isinstance(stale.get("keywords"), list):
+                log.warning("MDBList lookup failed for %s (%s): %r; using stale keywords", mid, type(exc).__name__, exc)
+                return stale["keywords"]
+            log.warning("MDBList lookup failed for %s (%s): %r", mid, type(exc).__name__, exc)
             return []
+
+        if r.status_code == 429:
+            if isinstance(stale, dict) and isinstance(stale.get("keywords"), list):
+                log.warning("MDBList rate limited for %s; using stale keywords", mid)
+                return stale["keywords"]
+            log.warning("MDBList rate limited for %s", mid)
+            return []
+        if r.status_code in (400, 404):
+            # These are normal title misses/invalid lookups, not application
+            # failures. Negative-cache them so repeated poster requests do not
+            # hit MDBList again during the discovery TTL.
+            try:
+                self.cache.write_json("discovery", cache_key, {"keywords": [], "missing": r.status_code == 404, "invalid": r.status_code == 400})
+            except Exception as exc:
+                log.debug("MDBList negative-cache write failed for %s: %r", mid, exc)
+            return []
+        if r.status_code != 200:
+            if isinstance(stale, dict) and isinstance(stale.get("keywords"), list):
+                log.warning("MDBList HTTP %s for %s; using stale keywords", r.status_code, mid)
+                return stale["keywords"]
+            log.warning("MDBList HTTP %s for %s", r.status_code, mid)
+            return []
+
+        try:
+            payload = r.json()
+            keywords = payload.get("keywords") or []
+            if not isinstance(keywords, list):
+                raise ValueError("MDBList keywords field is not a list")
+        except Exception as exc:
+            if isinstance(stale, dict) and isinstance(stale.get("keywords"), list):
+                log.warning("MDBList JSON parse failed for %s (%s): %r; using stale keywords", mid, type(exc).__name__, exc)
+                return stale["keywords"]
+            log.warning("MDBList JSON parse failed for %s (%s): %r", mid, type(exc).__name__, exc)
+            return []
+
+        try:
+            self.cache.write_json("discovery", cache_key, {"keywords": keywords})
+        except Exception as exc:
+            log.debug("MDBList cache write failed for %s: %r", mid, exc)
+        return keywords
 
     async def _load_art_bytes(self, url: str, kind: str) -> bytes:
         cached = self.cache.read("art", url, "bin", settings.art_cache_ttl_seconds)
@@ -265,26 +295,88 @@ class Resolver:
         self.cache.write_atomic("art", url, "bin", r.content)
         return r.content
 
-    async def _build_sash(self, raw: bytes, provider: str, details: dict, media_type: str, tmdb_id: str, imdb_id: str | None) -> tuple[bytes, str, str | None]:
+    async def _build_sash(self, raw: bytes, provider: str, details: dict, media_type: str, tmdb_id: str, imdb_id: str | None, source_url: str | None = None) -> tuple[bytes, str, str | None]:
         if not settings.enable_sashes:
             return raw, provider, None
         assert self.client is not None
+
+        # Cache the completed composite image. This mirrors PostersPlus'
+        # philosophy: expensive discovery should not happen on every poster
+        # request. The cache key includes all inputs that can change the sash.
+        sash_key = (
+            f"v{settings.art_selection_algorithm_version}:"
+            f"{provider}:{source_url or ''}:{tmdb_id}:{imdb_id or ''}:{media_type}:"
+            f"{settings.sash_priority}:{settings.sash_dark_threshold}:"
+            f"{settings.sash_force_gray_on_dark}:{settings.sash_tab_width_ratio}:"
+            f"{settings.sash_font_ratio}:{settings.sash_side_pad_ratio}:"
+            f"{settings.sash_bottom_inset_ratio}:{settings.sash_text_vertical_offset_ratio}:"
+            f"{settings.sash_cache_ttl_seconds}"
+        )
+        cached = self.cache.read_json("sash", sash_key, settings.sash_cache_ttl_seconds)
+        cached_bytes = self.cache.read("sash_image", sash_key, "jpg", settings.sash_cache_ttl_seconds)
+        if isinstance(cached, dict) and cached_bytes is not None:
+            return cached_bytes, provider, cached.get("label")
+
         async with self.image_sem:
             img = Image.open(io.BytesIO(raw)).convert("RGB")
 
-        # Top-rated dataset is local after refresh and only needs an IMDb id.
-        await self.toprated.refresh_if_needed(self.client)
-        is_top_rated = self.toprated.is_top(imdb_id)
+        # The daily IMDb dataset is maintained by the background task started at
+        # application startup. The request path only reads the local in-memory set.
 
-        keywords = await self._load_keywords(media_type, tmdb_id, imdb_id)
-        wins, noms = parse_mdblist_awards(keywords, tmdb_id=tmdb_id, media_type=media_type)
+        # Independent discovery sources run concurrently. Previously these were
+        # awaited serially (MDBList -> trending -> release dates), which made a
+        # single poster wait for the sum of several upstream latencies.
+        keyword_task = asyncio.create_task(self._load_keywords(media_type, tmdb_id, imdb_id))
+        trend_task = asyncio.create_task(self.trending.ranks(self.client, media_type, settings.tmdb_api_key))
 
+        release_status = None
+        recent_digital = None
+        release_slots = {"release_status", "cinema", "streaming", "physical", "production", "ended", "cancelled", "airing"}
+        needs_release = any(s in settings.sash_priority for s in release_slots)
+        needs_recent_digital = media_type not in ("tv", "series") and bool({"just_added", "new_release", "digital_release"} & set(settings.sash_priority))
+        release_task = None
+        if needs_release or needs_recent_digital:
+            release_task = asyncio.create_task(
+                fetch_movie_release_info(self.client, tmdb_id, settings.tmdb_api_key, details.get("status"))
+                if media_type not in ("tv", "series")
+                else fetch_release_status(self.client, tmdb_id, settings.tmdb_api_key, media_type, details.get("status"))
+            )
+
+        await (asyncio.gather(keyword_task, trend_task, release_task) if release_task else asyncio.gather(keyword_task, trend_task))
+
+        keywords = keyword_task.result()
         try:
-            ranks = await self.trending.ranks(self.client, media_type, settings.tmdb_api_key)
+            ranks = trend_task.result()
             trend_rank = ranks.get(str(tmdb_id))
         except Exception as exc:
-            log.warning("Trending lookup failed: %s", exc)
+            log.warning("Trending lookup failed (%s): %r", type(exc).__name__, exc)
             trend_rank = None
+
+        if release_task:
+            try:
+                release_value = release_task.result()
+                if media_type in ("tv", "series"):
+                    release_status = release_value
+                else:
+                    info = release_value or {}
+                    release_status = info.get("status")
+                    d = info.get("digital_latest_date") or info.get("digital_date")
+                    if d:
+                        try:
+                            from datetime import date
+                            age = (date.today() - date.fromisoformat(str(d)[:10])).days
+                            if 0 <= age <= 14:
+                                recent_digital = str(d)[:10]
+                        except (TypeError, ValueError):
+                            recent_digital = None
+            except Exception as exc:
+                log.warning("Release-status lookup failed (%s): %r", type(exc).__name__, exc)
+
+        if release_status in ("Cinema", "Production") and is_digital_release(imdb_id):
+            release_status = "Streaming"
+
+        wins, noms = parse_mdblist_awards(keywords, tmdb_id=tmdb_id, media_type=media_type)
+        is_top_rated = self.toprated.is_top(imdb_id)
 
         tmdb_data = {
             "id": details.get("id"),
@@ -300,23 +392,6 @@ class Resolver:
             "last_episode": details.get("last_episode_to_air"),
             "seasons": details.get("seasons") or [],
         }
-
-        release_status = None
-        recent_digital = None
-        release_slots = {"release_status", "cinema", "streaming", "physical", "production", "ended", "cancelled", "airing"}
-        if any(s in settings.sash_priority for s in release_slots):
-            try:
-                release_status = await fetch_release_status(self.client, tmdb_id, settings.tmdb_api_key, media_type, details.get("status"))
-            except Exception as exc:
-                log.warning("Release-status lookup failed: %s", exc)
-            if release_status in ("Cinema", "Production") and is_digital_release(imdb_id):
-                release_status = "Streaming"
-
-        if media_type not in ("tv", "series") and ({"just_added", "new_release", "digital_release"} & set(settings.sash_priority)):
-            try:
-                recent_digital = await fetch_recent_movie_digital_release_date(self.client, tmdb_id, settings.tmdb_api_key, details.get("status"))
-            except Exception as exc:
-                log.warning("Recent digital-date lookup failed: %s", exc)
 
         meta = extract_discovery_meta(
             tmdb_data=tmdb_data,
@@ -348,12 +423,24 @@ class Resolver:
                     picked = p
                     break
         if not picked:
+            try:
+                self.cache.write_atomic("sash_image", sash_key, "jpg", raw)
+                self.cache.write_json("sash", sash_key, {"label": None})
+            except Exception as exc:
+                log.debug("No-sash cache write failed for %s: %r", tmdb_id, exc)
             return raw, provider, None
+
         label, _stype = picked
         color, text = dominant_sash_color(img, settings.sash_dark_threshold, settings.sash_force_gray_on_dark)
         out = draw_status_sash(img, label, color, text, settings)
         buf = io.BytesIO(); out.save(buf, format="JPEG", quality=92, optimize=True)
-        return buf.getvalue(), provider, label
+        body = buf.getvalue()
+        try:
+            self.cache.write_atomic("sash_image", sash_key, "jpg", body)
+            self.cache.write_json("sash", sash_key, {"label": label})
+        except Exception as exc:
+            log.debug("Sash cache write failed for %s: %r", tmdb_id, exc)
+        return body, provider, label
 
     async def select_art(self, kind: str, media_type: str, tmdb_id: str | None, imdb_id: str | None = None, tvdb_id: str | None = None, lang: str = "en", with_sash: bool = False):
         requested = kind + ":" + _media_kind(media_type) + ":" + str(tmdb_id or "") + ":" + str(imdb_id or "") + ":" + str(tvdb_id or "") + ":" + str(lang) + ":" + str(with_sash)
@@ -446,5 +533,5 @@ class Resolver:
                 buf = io.BytesIO()
                 image.save(buf, format="JPEG", quality=92, optimize=True)
                 raw = buf.getvalue()
-            return await self._build_sash(raw, provider or "unknown", details or {}, media_type, str(tmdb_id or ""), imdb_id)
+            return await self._build_sash(raw, provider or "unknown", details or {}, media_type, str(tmdb_id or ""), imdb_id, selected_url)
         return raw, provider, None

@@ -121,4 +121,4 @@ def test_mdblist_400_is_cached_as_empty_and_not_logged_as_keyword_failure(monkey
     result = asyncio.run(r._load_keywords("series", "123", "tt1234567"))
     assert result == []
     cached = r.cache.read_json("discovery", "imdb:show:tt1234567", 999999)
-    assert cached == {"keywords": [], "invalid": True}
+    assert cached == {"keywords": [], "missing": False, "invalid": True}
