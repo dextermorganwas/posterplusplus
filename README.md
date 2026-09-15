@@ -97,7 +97,7 @@ font size and fixed baseline. Label length only changes horizontal fitting, neve
 geometry or vertical placement.
 
 
-Sash typography uses Roboto Condensed Bold under Apache License 2.0; the license text is included in `app/assets/ROBOTO-APACHE-2.0.txt`.
+Sash typography uses Lato Bold, installed from the Debian `fonts-lato` package at image build time.
 
 ### Sash typography
 The sash renderer uses the OS-provided Nimbus Sans Narrow Bold font installed by the Docker image. No font binaries are bundled in the repository. Labels are uppercase, fixed-scale, and rendered without horizontal bitmap squashing.

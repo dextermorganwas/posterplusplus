@@ -4,13 +4,13 @@ import os
 
 
 def _font_path() -> str:
-    return "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+    return "/usr/share/fonts/truetype/lato/Lato-Bold.ttf"
 
 
 def _font_fixed(text: str, size: int):
     """Return one fixed-size font for every sash label.
 
-    The font is Liberation Sans Bold, a clean Arial-like sans-serif chosen
+    The font is Lato Bold, a clean Arial-like sans-serif chosen
     to match the simple, broad uppercase typography of the reference sash while
     keeping glyph proportions natural (no horizontal scaling).
 
