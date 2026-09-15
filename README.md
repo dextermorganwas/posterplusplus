@@ -88,3 +88,10 @@ docker compose up -d
 ```
 
 If you use another `CACHE_HOST_PATH`, substitute that directory. Do not delete the cache unless you specifically want to lose cached artwork/metadata and local IMDb data.
+
+### Sash visual profile
+
+The default sash profile intentionally follows the supplied inspiration: labels are
+uppercase, the tab width is a fixed 35% of the poster width, and all labels share one
+font size and fixed baseline. Label length only changes horizontal fitting, never sash
+geometry or vertical placement.

@@ -47,5 +47,5 @@ def test_sash_text_uses_fixed_baseline_for_labels_with_and_without_descenders():
     # Regression guard: implementation must use a fixed baseline anchor.
     import inspect
     src = inspect.getsource(draw_status_sash)
-    assert "anchor='ls'" in src
-    assert 'baseline_y = round' in src
+    assert "anchor=\"ls\"" in src
+    assert 'baseline_local = round' in src
