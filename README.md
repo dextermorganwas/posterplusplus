@@ -98,3 +98,6 @@ geometry or vertical placement.
 
 
 Sash typography uses Roboto Condensed Bold under Apache License 2.0; the license text is included in `app/assets/ROBOTO-APACHE-2.0.txt`.
+
+### Sash typography
+The sash renderer uses the OS-provided Noto Sans Display SemiCondensed Bold font installed by the Docker image. No font binaries are bundled in the repository. Labels are uppercase, fixed-scale, and rendered without horizontal bitmap squashing.

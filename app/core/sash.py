@@ -4,11 +4,15 @@ import os
 
 
 def _font_path() -> str:
-    return os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "Inter-Bold.ttf")
+    return "/usr/share/fonts/truetype/noto/NotoSansDisplay-SemiCondensedBold.ttf"
 
 
 def _font_fixed(text: str, size: int):
     """Return one fixed-size font for every sash label.
+
+    The font is Noto Sans Display SemiCondensed Bold: a moderate, clean
+    condensation chosen to keep long labels readable inside the same fixed tab
+    without horizontally scaling individual glyphs.
 
     Sash labels intentionally share one typographic scale. We do not shrink
     individual labels just because they are longer; that makes labels such as

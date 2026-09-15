@@ -42,7 +42,7 @@ class Settings:
     sash_side_pad_ratio: float=env_float("SASH_SIDE_PAD_RATIO",0.006)
     sash_min_tab_width_ratio: float=env_float("SASH_MIN_TAB_WIDTH_RATIO",0.32)
     sash_max_tab_width_ratio: float=env_float("SASH_MAX_TAB_WIDTH_RATIO",0.70)
-    sash_tab_width_ratio: float=env_float("SASH_TAB_WIDTH_RATIO",0.40)
+    sash_tab_width_ratio: float=env_float("SASH_TAB_WIDTH_RATIO",0.42)
     sash_dark_threshold: float=env_float("SASH_DARK_THRESHOLD",0.17)
     sash_force_gray_on_dark: bool=env_bool("SASH_FORCE_GRAY_ON_DARK",True)
     sash_bottom_inset_ratio: float=env_float("SASH_BOTTOM_INSET_RATIO",0.012)
