@@ -38,6 +38,7 @@ class Settings:
     sash_tab_height_ratio: float=env_float("SASH_TAB_HEIGHT_RATIO",0.085)
     sash_tab_radius_ratio: float=env_float("SASH_TAB_RADIUS_RATIO",0.018)
     sash_font_ratio: float=env_float("SASH_FONT_RATIO",0.055)
+    sash_min_font_ratio: float=env_float("SASH_MIN_FONT_RATIO",0.038)
     sash_side_pad_ratio: float=env_float("SASH_SIDE_PAD_RATIO",0.030)
     sash_min_tab_width_ratio: float=env_float("SASH_MIN_TAB_WIDTH_RATIO",0.32)
     sash_max_tab_width_ratio: float=env_float("SASH_MAX_TAB_WIDTH_RATIO",0.70)

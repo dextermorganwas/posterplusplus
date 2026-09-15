@@ -95,3 +95,6 @@ The default sash profile intentionally follows the supplied inspiration: labels 
 uppercase, the tab width is a fixed 35% of the poster width, and all labels share one
 font size and fixed baseline. Label length only changes horizontal fitting, never sash
 geometry or vertical placement.
+
+
+Sash typography uses Roboto Condensed Bold under Apache License 2.0; the license text is included in `app/assets/ROBOTO-APACHE-2.0.txt`.
